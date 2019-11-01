@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/caseymrm/menuet"
 	"github.com/karalabe/hid"
 )
@@ -30,10 +31,26 @@ func setRGB(red byte, green byte, blue byte) {
 
 func fadeRGB(red byte, green byte, blue byte) {
 	runLuxaforCommand([]byte{2, 255, red, green, blue, 50, 0})
+	clearMasterColor()
 }
 
 func setPattern(pattern byte) {
 	runLuxaforCommand([]byte{6, pattern, 255, 0, 0, 0, 0, 0})
+	clearMasterColor()
+}
+
+func setMasterColor(color string) {
+	menuet.App().SetMenuState(&menuet.MenuState{
+		Title: "Luxafor",
+		Image: fmt.Sprintf("%s.png", color),
+	})
+}
+
+func clearMasterColor() {
+	menuet.App().SetMenuState(&menuet.MenuState{
+		Title: "Luxafor",
+		Image: "light.pdf",
+	})
 }
 
 func fadeMenu() []menuet.MenuItem {
@@ -106,24 +123,28 @@ func menuItems() []menuet.MenuItem {
 			Text: "Green",
 			Clicked: func() {
 				setRGB(0, 255, 0)
+				setMasterColor("green")
 			},
 		},
 		menuet.MenuItem{
 			Text: "Yellow",
 			Clicked: func() {
 				setRGB(255, 255, 0)
+				setMasterColor("yellow")
 			},
 		},
 		menuet.MenuItem{
 			Text: "Red",
 			Clicked: func() {
 				setRGB(255, 0, 0)
+				setMasterColor("red")
 			},
 		},
 		menuet.MenuItem{
 			Text: "Blue",
 			Clicked: func() {
 				setRGB(0, 0, 255)
+				setMasterColor("blue")
 			},
 		},
 		menuet.MenuItem{
