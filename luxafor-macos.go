@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+
 	"github.com/caseymrm/menuet"
 	"github.com/karalabe/hid"
 )
@@ -9,20 +11,39 @@ import (
 var vendorId uint16 = 0x04d8
 var productId uint16 = 0xf372
 
-func getLuxaforDevice() *hid.Device {
+func getLuxaforDevice() (*hid.Device, error) {
 	for _, info := range hid.Enumerate(vendorId, productId) {
 		if info.VendorID == vendorId && info.ProductID == productId {
-			dev, _ := info.Open()
-			return dev
+			dev, err := info.Open()
+			return dev, err
 		}
 	}
-	panic("Unable to get Luxafor device")
+
+	return nil, errors.New("Unable to find Luxafor device")
+}
+
+func checkLuxaforDevice() bool {
+	dev, err := getLuxaforDevice()
+	if err == nil {
+		dev.Close()
+		return true
+	}
+	return false
 }
 
 func runLuxaforCommand(command []byte) {
-	dev := getLuxaforDevice()
-	dev.Write(command)
-	dev.Close()
+	dev, err := getLuxaforDevice()
+
+	if err != nil {
+		menuet.App().SetMenuState(&menuet.MenuState{
+			Image: "light-disabled.pdf",
+		})
+		menuet.App().Children = disabledMenuItems
+		menuet.App().MenuChanged()
+	} else {
+		dev.Write(command)
+		dev.Close()
+	}
 }
 
 func setRGB(red byte, green byte, blue byte) {
@@ -41,15 +62,13 @@ func setPattern(pattern byte) {
 
 func setMasterColor(color string) {
 	menuet.App().SetMenuState(&menuet.MenuState{
-		Title: "Luxafor",
 		Image: fmt.Sprintf("%s.png", color),
 	})
 }
 
 func clearMasterColor() {
 	menuet.App().SetMenuState(&menuet.MenuState{
-		Title: "Luxafor",
-		Image: "light.pdf",
+		Image: "light-normal.pdf",
 	})
 }
 
@@ -159,6 +178,29 @@ func menuItems() []menuet.MenuItem {
 			Text: "Off",
 			Clicked: func() {
 				setRGB(0, 0, 0)
+				clearMasterColor()
+			},
+		},
+	}
+}
+
+func disabledMenuItems() []menuet.MenuItem {
+	return []menuet.MenuItem{
+		menuet.MenuItem{
+			Text: "Unable to find any Luxaflag devices",
+		},
+		menuet.MenuItem{
+			Text: "Re-scan",
+			Clicked: func() {
+				fmt.Printf("Check again!\n")
+
+				if checkLuxaforDevice() {
+					menuet.App().SetMenuState(&menuet.MenuState{
+						Image: "light-normal.pdf",
+					})
+					menuet.App().Children = menuItems
+					menuet.App().MenuChanged()
+				}
 			},
 		},
 	}
@@ -168,11 +210,17 @@ func main() {
 	app := menuet.App()
 
 	app.SetMenuState(&menuet.MenuState{
-		Title: "Luxafor",
-		Image: "light.pdf",
+		Image: "light-normal.pdf",
 	})
 
 	app.Children = menuItems
+	if !checkLuxaforDevice() {
+		app.Children = disabledMenuItems
+
+		app.SetMenuState(&menuet.MenuState{
+			Image: "light-disabled.pdf",
+		})
+	}
 
 	app.Name = "Luxafor macOS"
 	app.Label = "luxafor-macos.colde.github.com"
