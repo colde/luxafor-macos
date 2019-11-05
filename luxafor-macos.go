@@ -38,9 +38,10 @@ func runLuxaforCommand(command []byte) {
 		menuet.App().SetMenuState(&menuet.MenuState{
 			Image: "light-disabled.pdf",
 		})
-		menuet.App().Children = disabledMenuItems
-		menuet.App().MenuChanged()
 	} else {
+		menuet.App().SetMenuState(&menuet.MenuState{
+			Image: "light-normal.pdf",
+		})
 		dev.Write(command)
 		dev.Close()
 	}
@@ -184,28 +185,6 @@ func menuItems() []menuet.MenuItem {
 	}
 }
 
-func disabledMenuItems() []menuet.MenuItem {
-	return []menuet.MenuItem{
-		menuet.MenuItem{
-			Text: "Unable to find any Luxaflag devices",
-		},
-		menuet.MenuItem{
-			Text: "Re-scan",
-			Clicked: func() {
-				fmt.Printf("Check again!\n")
-
-				if checkLuxaforDevice() {
-					menuet.App().SetMenuState(&menuet.MenuState{
-						Image: "light-normal.pdf",
-					})
-					menuet.App().Children = menuItems
-					menuet.App().MenuChanged()
-				}
-			},
-		},
-	}
-}
-
 func main() {
 	app := menuet.App()
 
@@ -215,8 +194,6 @@ func main() {
 
 	app.Children = menuItems
 	if !checkLuxaforDevice() {
-		app.Children = disabledMenuItems
-
 		app.SetMenuState(&menuet.MenuState{
 			Image: "light-disabled.pdf",
 		})
