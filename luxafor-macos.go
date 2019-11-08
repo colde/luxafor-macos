@@ -1,49 +1,50 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-
 	"github.com/caseymrm/menuet"
 	"github.com/karalabe/hid"
+	"log"
+	"time"
 )
 
 var vendorId uint16 = 0x04d8
 var productId uint16 = 0xf372
+var currentIcon string = "light-normal.pdf"
+var lastCommand []byte
+var reSendCommand bool = false
 
-func getLuxaforDevice() (*hid.Device, error) {
+func getLuxaforDevice() *hid.Device {
 	for _, info := range hid.Enumerate(vendorId, productId) {
 		if info.VendorID == vendorId && info.ProductID == productId {
 			dev, err := info.Open()
-			return dev, err
+
+			if err != nil {
+				log.Print(err)
+			} else {
+				log.Printf("Device connected")
+				return dev
+			}
 		}
 	}
-
-	return nil, errors.New("Unable to find Luxafor device")
-}
-
-func checkLuxaforDevice() bool {
-	dev, err := getLuxaforDevice()
-	if err == nil {
-		dev.Close()
-		return true
-	}
-	return false
+	log.Printf("Device not connected")
+	return nil
 }
 
 func runLuxaforCommand(command []byte) {
-	dev, err := getLuxaforDevice()
+	dev := getLuxaforDevice()
 
-	if err != nil {
+	if dev != nil {
+		menuet.App().SetMenuState(&menuet.MenuState{
+			Image: currentIcon,
+		})
+		dev.Write(command)
+		lastCommand = command
+		dev.Close()
+	} else {
 		menuet.App().SetMenuState(&menuet.MenuState{
 			Image: "light-disabled.pdf",
 		})
-	} else {
-		menuet.App().SetMenuState(&menuet.MenuState{
-			Image: "light-normal.pdf",
-		})
-		dev.Write(command)
-		dev.Close()
 	}
 }
 
@@ -62,15 +63,18 @@ func setPattern(pattern byte) {
 }
 
 func setMasterColor(color string) {
+	imageName := fmt.Sprintf("%s.png", color)
 	menuet.App().SetMenuState(&menuet.MenuState{
-		Image: fmt.Sprintf("%s.png", color),
+		Image: imageName,
 	})
+	currentIcon = imageName
 }
 
 func clearMasterColor() {
 	menuet.App().SetMenuState(&menuet.MenuState{
 		Image: "light-normal.pdf",
 	})
+	currentIcon = "light-normal.pdf"
 }
 
 func fadeMenu() []menuet.MenuItem {
@@ -185,6 +189,24 @@ func menuItems() []menuet.MenuItem {
 	}
 }
 
+func updateDeviceStatus() {
+	dev := getLuxaforDevice()
+
+	if dev != nil {
+		log.Print(currentIcon)
+		dev.Close()
+		if reSendCommand && len(lastCommand) > 0 {
+			runLuxaforCommand(lastCommand)
+		}
+		reSendCommand = false
+	} else {
+		menuet.App().SetMenuState(&menuet.MenuState{
+			Image: "light-disabled.pdf",
+		})
+		reSendCommand = true
+	}
+}
+
 func main() {
 	app := menuet.App()
 
@@ -193,13 +215,28 @@ func main() {
 	})
 
 	app.Children = menuItems
-	if !checkLuxaforDevice() {
-		app.SetMenuState(&menuet.MenuState{
-			Image: "light-disabled.pdf",
-		})
-	}
+	updateDeviceStatus()
 
 	app.Name = "Luxafor macOS"
 	app.Label = "luxafor-macos.colde.github.com"
+
+	// Setup device update ticket
+	ticker := time.NewTicker(20 * time.Second)
+	tickerDone := make(chan bool)
+
+	go func() {
+		for {
+			select {
+			case <-tickerDone:
+				return
+			case _ = <-ticker.C:
+				log.Printf("Updating device status")
+				updateDeviceStatus()
+			}
+		}
+	}()
+
 	app.RunApplication()
+	ticker.Stop()
+	tickerDone <- true
 }
