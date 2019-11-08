@@ -24,8 +24,8 @@ jobs:
       - name: Build application
         run: |
           pwd
-          make
           ls
+          make
       - name: Build release asset
         run: |
           zip --junk-paths -r Luxafor.app.zip Luxafor.app
