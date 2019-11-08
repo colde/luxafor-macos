@@ -24,7 +24,7 @@ jobs:
       - name: Build application
         run: |
           pwd
-          ls
+          find .
           make
       - name: Build release asset
         run: |
