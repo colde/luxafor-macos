@@ -23,8 +23,6 @@ jobs:
           go get -v -t -d ./...
       - name: Build application
         run: |
-          pwd
-          find .
           make
       - name: Build release asset
         run: |
