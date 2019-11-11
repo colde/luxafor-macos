@@ -5,3 +5,6 @@ build:
 
 run: build
 	./Luxafor.app/Contents/MacOS/luxafor-macos
+
+install: build
+	cp -r ./Luxafor.app /Applications
