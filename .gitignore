@@ -1,4 +1,5 @@
 .idea
 .DS_Store
-Luxafor.App/Contents/MacOS
+Luxafor.App/Contents/MacOS/*
+!Luxafor.App/Contents/MacOS/.gitkeep
 Luxafor.app/Contents/Resources/icon.icns
